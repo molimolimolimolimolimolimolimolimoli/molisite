@@ -1,0 +1,726 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Angel Wish', 'Courier New', monospace;
+}
+
+:root {
+  --primary-color: #ffffff;
+}
+
+@font-face {
+  font-family: 'Angel Wish';
+  src: url('assets/Angel_wish.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+::selection {
+  background: #ffffff;
+  color: #000000;
+}
+
+body {
+  background-color: #000;
+  color: #fff;
+  overflow: hidden;
+}
+
+.custom-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  background: url('assets/custom_cursor.png') no-repeat center center;
+  background-size: contain;
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform;
+  transform: translate3d(-50%, -50%, 0);
+}
+
+body:not(.touch-device) {
+  cursor: none;
+}
+
+.container {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+}
+
+#background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  pointer-events: none;
+  transform: translateZ(0);
+}
+
+.vignette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* Old-TV static: halftone dot grid + scanlines, no blend-mode (keeps compositing cheap) */
+.tv-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.3;
+  will-change: opacity;
+  transform: translateZ(0);
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.06) 0px,
+      rgba(255, 255, 255, 0.06) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    radial-gradient(circle, rgba(0, 0, 0, 0.9) 0.6px, transparent 0.6px);
+  background-size: 100% 3px, 3px 3px;
+  animation: tvFlicker 5s infinite steps(2);
+  /* keep the static off the cards themselves - they're crisp/unblurred glass, not grainy */
+  mask-image: radial-gradient(ellipse 430px 400px at 50% 48%, transparent 55%, rgba(0, 0, 0, 0.5) 78%, black 100%);
+  -webkit-mask-image: radial-gradient(ellipse 430px 400px at 50% 48%, transparent 55%, rgba(0, 0, 0, 0.5) 78%, black 100%);
+}
+
+@keyframes tvFlicker {
+  0%, 18%, 21%, 55%, 58%, 100% { opacity: 0.3; }
+  19% { opacity: 0.14; }
+  20% { opacity: 0.38; }
+  56% { opacity: 0.18; }
+  57% { opacity: 0.34; }
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Top-left volume control */
+
+.top-controls {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  z-index: 20;
+  padding: 8px;
+  border-radius: 999px;
+}
+
+/* Liquid glass: soft frosted panel with a bright top edge and faint sheen */
+.glass {
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02) 45%, rgba(255, 255, 255, 0.08)),
+    rgba(12, 12, 12, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+}
+
+.volume-icon {
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  display: flex;
+  color: white;
+  flex-shrink: 0;
+}
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  height: 5px;
+  margin-left: 0;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.3);
+  outline: none;
+  opacity: 0;
+  overflow: hidden;
+  transition: width 0.25s ease, opacity 0.25s ease, margin-left 0.25s ease;
+}
+
+.top-controls:hover .slider,
+.top-controls:focus-within .slider {
+  width: 90px;
+  opacity: 1;
+  margin-left: 10px;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+}
+
+/* Card stack */
+
+#card-stack {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 640px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 20;
+}
+
+#profile-card, #audio-player-card {
+  position: relative;
+  transform-origin: center;
+}
+
+#profile-card {
+  width: 100%;
+  border-radius: 20px;
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+
+/* cursor-tracked spotlight - purely a background glow, no transforms, so it can't fight the glass/backdrop setup */
+#profile-card::before,
+#audio-player-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.16), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+#profile-card:hover::before,
+#audio-player-card:hover::before {
+  opacity: 1;
+}
+
+#profile-card > *,
+#audio-player-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.card-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.avatar-wrap {
+  display: block;
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin-top: -70px;
+  border-radius: 50%;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.25s ease;
+}
+
+.avatar-wrap:hover {
+  transform: scale(1.1);
+}
+
+.avatar-wrap::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  opacity: 0;
+  animation: avatarHint 2.6s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes avatarHint {
+  0% { transform: scale(0.92); opacity: 0.7; }
+  70% { transform: scale(1.18); opacity: 0; }
+  100% { transform: scale(1.18); opacity: 0; }
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stats-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.stats-row svg {
+  width: 15px;
+  height: 15px;
+  vertical-align: -2px;
+  margin-right: 4px;
+}
+
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  margin-top: 14px;
+}
+
+#profile-name {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+#profile-bio {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 15px;
+  font-weight: 570;
+  line-height: 1.5;
+  min-height: 22px;
+  text-align: left;
+}
+
+.social-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.social-icon {
+  width: 40px;
+  height: 40px;
+  color: #ffffff;
+  filter: drop-shadow(#ffffff 1px 0 7px);
+  transition: transform 0.3s ease;
+}
+
+.spotify-icon {
+  width: 33px;
+  height: 33px;
+  position: relative;
+  top: 3px;
+}
+
+.social-icon:hover {
+  transform: scale(1.25);
+}
+
+.wing-icon {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.6));
+}
+
+.wing-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Audio player */
+
+#audio-player-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-radius: 20px;
+  padding: 14px 18px;
+  will-change: transform;
+}
+
+.track-cover {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.track-cover svg {
+  width: 24px;
+  height: 24px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.track-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.track-title-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+#track-title {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eq-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.eq-bars span {
+  width: 2.5px;
+  background: #fff;
+  border-radius: 1px;
+  animation: eqBounce 0.9s ease-in-out infinite;
+}
+
+.eq-bars span:nth-child(1) { animation-delay: 0s; }
+.eq-bars span:nth-child(2) { animation-delay: 0.2s; }
+.eq-bars span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes eqBounce {
+  0%, 100% { height: 3px; }
+  50% { height: 12px; }
+}
+
+.audio-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#time-current, #time-total {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+  min-width: 28px;
+}
+
+#time-total {
+  text-align: right;
+}
+
+.audio-progress {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+#audio-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #fff;
+}
+
+.audio-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0.85;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.control-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.control-btn-main {
+  width: 38px;
+  height: 38px;
+}
+
+.control-btn-main svg {
+  width: 22px;
+  height: 22px;
+}
+
+.control-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+/* Effects */
+
+.cursor-trail {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.cursor-trail-dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle, #fff 0%, rgba(255, 255, 255, 0.6) 45%, transparent 75%);
+  border-radius: 50%;
+  box-shadow: 0 0 6px 1px rgba(255, 255, 255, 0.6);
+  will-change: transform;
+  transition: opacity 0.3s ease;
+}
+
+.cursor-spark {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  background: #fff;
+  clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
+  pointer-events: none;
+  z-index: 9998;
+  will-change: transform, opacity;
+  animation: sparkFly 0.6s ease-out forwards;
+}
+
+@keyframes sparkFly {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) translate(0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2) translate(var(--spark-dx), var(--spark-dy));
+  }
+}
+
+/* Cava-style audio visualizer, pinned to the bottom edge */
+
+.cava-bars {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 140px;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 0 2px;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.cava-bar {
+  flex: 1;
+  min-width: 2px;
+  height: 1%;
+  background: #ffffff;
+}
+
+/* Start screen */
+
+#start-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 30;
+  cursor: pointer;
+}
+
+#start-text {
+  font-size: 32px;
+  color: #fff;
+  text-align: center;
+}
+
+#start-click {
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: rgba(255, 255, 255, 0.5);
+  animation: startClickPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes startClickPulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.85; }
+}
+
+/* AFK overlay */
+
+#afk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.4s ease;
+}
+
+#afk-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#afk-clock {
+  position: relative;
+  z-index: 2;
+  font-size: 44px;
+  letter-spacing: 3px;
+  color: #fff;
+  text-shadow: 0 0 22px rgba(255, 255, 255, 0.6);
+}
+
+#afk-label {
+  position: relative;
+  z-index: 2;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-align: center;
+  padding: 0 20px;
+}
+
+@media (max-width: 430px) {
+  #card-stack {
+    width: 90vw;
+    max-width: 360px;
+    gap: 12px;
+  }
+
+  #profile-card {
+    padding: 18px;
+  }
+
+  .avatar-wrap {
+    width: 80px;
+    height: 80px;
+    margin-top: -50px;
+  }
+
+  #profile-name {
+    font-size: 22px;
+  }
+
+  #profile-bio {
+    font-size: 12px;
+  }
+
+  #audio-player-card {
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  .track-cover {
+    width: 42px;
+    height: 42px;
+  }
+
+  #start-text {
+    font-size: 18px;
+    padding: 0 20px;
+  }
+
+  .top-controls {
+    top: 10px;
+    left: 10px;
+  }
+
+  .top-controls:hover .slider,
+  .top-controls:focus-within .slider {
+    width: 60px;
+  }
+
+  #afk-clock {
+    font-size: 30px;
+  }
+}
