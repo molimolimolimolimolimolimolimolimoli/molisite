@@ -185,26 +185,18 @@ document.addEventListener('DOMContentLoaded', () => {
   startText.textContent = "molisaurus";
 
   function initializeVisitorCounter() {
-    let totalVisitors = parseInt(localStorage.getItem('totalVisitorCount'), 10);
-    if (!Number.isFinite(totalVisitors)) {
-      totalVisitors = 0;
-    }
+    const cachedCount = parseInt(localStorage.getItem('lastKnownViewCount'), 10);
+    visitorCount.textContent = Number.isFinite(cachedCount) ? cachedCount.toLocaleString() : '0';
 
-    if (!localStorage.getItem('hasVisited')) {
-      totalVisitors++;
-      localStorage.setItem('hasVisited', 'true');
-    }
-    localStorage.setItem('totalVisitorCount', totalVisitors);
-
-    visitorCount.textContent = totalVisitors.toLocaleString();
-
-    setInterval(() => {
-      if (Math.random() < 0.00296) {
-        totalVisitors++;
-        localStorage.setItem('totalVisitorCount', totalVisitors);
-        visitorCount.textContent = totalVisitors.toLocaleString();
-      }
-    }, 60000);
+    fetch('https://views.molimolimolimolimolimolimolimolimolimolimolimolimolimolimoli.lol/up')
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.count === 'number') {
+          visitorCount.textContent = data.count.toLocaleString();
+          localStorage.setItem('lastKnownViewCount', data.count);
+        }
+      })
+      .catch((err) => console.error('Failed to update view counter:', err));
   }
 
   initializeVisitorCounter();
