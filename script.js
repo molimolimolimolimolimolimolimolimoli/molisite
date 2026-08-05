@@ -394,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
     startScreen.classList.add('hidden');
 
     loadTrack(Math.floor(Math.random() * playlist.length), true);
-    initVisualizer();
+    if (!isTouchDevice) initVisualizer();
 
     profileCard.classList.remove('hidden');
     audioPlayerCard.classList.remove('hidden');
